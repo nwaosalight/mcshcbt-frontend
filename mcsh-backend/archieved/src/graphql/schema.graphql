@@ -1,0 +1,933 @@
+scalar DateTime
+scalar Json
+scalar UUID
+scalar Upload
+
+"""
+User types supported in the system
+"""
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+"""
+Status of user accounts in the system
+"""
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+"""
+Status of exams in the system
+"""
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+"""
+Status of a student's exam attempt
+"""
+enum ExamAttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  GRADED
+  EXPIRED
+}
+
+"""
+Types of questions that can be created in exams
+"""
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
+  MATCHING
+}
+
+"""
+Difficulty levels for questions
+"""
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+"""
+Types of system notifications
+"""
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+"""
+Generic error codes for more specific error handling
+"""
+enum ErrorCode {
+  UNAUTHORIZED
+  FORBIDDEN
+  NOT_FOUND
+  VALIDATION_ERROR
+  ALREADY_EXISTS
+  INTERNAL_ERROR
+  BUSINESS_RULE_VIOLATION
+  INVALID_INPUT
+  INVALID_OPERATION
+  EXAM_NOT_AVAILABLE
+  EXAM_ALREADY_STARTED
+  EXAM_ALREADY_COMPLETED
+  QUESTION_NOT_IN_EXAM
+  GRADE_CONFLICT
+  TIME_EXPIRED
+}
+
+"""
+User authentication input type
+"""
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+"""
+A generic error response containing details about what went wrong
+"""
+type Error {
+  code: ErrorCode!
+  message: String!
+  path: [String!]
+  details: Json
+}
+
+"""
+Authentication response with token
+"""
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+"""
+Either AuthPayload or Error
+"""
+union AuthResult = AuthPayload | Error
+
+"""
+A user in the system (student, teacher, or admin)
+"""
+type User implements Node {
+  id: ID!
+  uuid: UUID!
+  firstName: String!
+  lastName: String!
+  email: String!
+  role: UserRole!
+  status: UserStatus!
+  profileImage: String
+  phoneNumber: String
+  lastLogin: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Computed fields
+  fullName: String!
+  
+  # Relationships
+  teacherSubjects: [Subject!]
+  teacherGrades: [Grade!]
+  studentGrades: [Grade!]
+  createdExams: [Exam!]
+  studentExams: [StudentExam!]
+  notifications: [Notification!]
+}
+
+"""
+Either User or Error
+"""
+union UserResult = User | Error
+
+"""
+Academic subject in the school
+"""
+type Subject implements Node {
+  id: ID!
+  uuid: UUID!
+  code: String!
+  name: String!
+  description: String
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  teachers: [User!]
+  exams: [Exam!]
+}
+
+"""
+Either Subject or Error
+"""
+union SubjectResult = Subject | Error
+
+"""
+Grade or class in the school
+"""
+type Grade implements Node {
+  id: ID!
+  uuid: UUID!
+  name: String!
+  description: String
+  academicYear: String!
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  teachers: [User!]
+  students: [User!]
+  exams: [Exam!]
+}
+
+"""
+Either Grade or Error
+"""
+union GradeResult = Grade | Error
+
+"""
+Teacher-Subject assignment
+"""
+type TeacherSubject {
+  teacher: User!
+  subject: Subject!
+  assignedAt: DateTime!
+  isActive: Boolean!
+}
+
+"""
+Teacher-Grade assignment
+"""
+type TeacherGrade {
+  teacher: User!
+  grade: Grade!
+  assignedAt: DateTime!
+  isActive: Boolean!
+}
+
+"""
+Student-Grade enrollment
+"""
+type StudentGrade {
+  student: User!
+  grade: Grade!
+  enrolledAt: DateTime!
+  isActive: Boolean!
+}
+
+"""
+Exam definition for a CBT test
+"""
+type Exam implements Node {
+  id: ID!
+  uuid: UUID!
+  title: String!
+  description: String
+  subject: Subject!
+  grade: Grade!
+  createdBy: User!
+  duration: Int!
+  passmark: Float
+  shuffleQuestions: Boolean!
+  allowReview: Boolean!
+  showResults: Boolean!
+  startDate: DateTime
+  endDate: DateTime
+  status: ExamStatus!
+  instructions: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  questions: [Question!]!
+  studentExams: [StudentExam!]
+  
+  # Computed fields
+  questionCount: Int!
+  totalPoints: Float!
+  averageScore: Float
+  passRate: Float
+}
+
+"""
+Either Exam or Error
+"""
+union ExamResult = Exam | Error
+
+"""
+Question in an exam
+"""
+type Question implements Node {
+  id: ID!
+  uuid: UUID!
+  exam: Exam!
+  questionNumber: Int!
+  text: String!
+  questionType: QuestionType!
+  options: Json
+  correctAnswer: String!
+  points: Float!
+  difficultyLevel: DifficultyLevel
+  tags: [String!]
+  feedback: String
+  image: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+"""
+Either Question or Error
+"""
+union QuestionResult = Question | Error
+
+"""
+Student's exam session
+"""
+type StudentExam implements Node {
+  id: ID!
+  uuid: UUID!
+  student: User!
+  exam: Exam!
+  startTime: DateTime
+  endTime: DateTime
+  timeSpent: Int
+  score: Float
+  isPassed: Boolean
+  status: ExamAttemptStatus!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  
+  # Relationships
+  answers: [StudentAnswer!]
+  
+  # Computed fields
+  progress: Float!
+  remainingTime: Int
+  answeredCount: Int!
+  markedCount: Int!
+}
+
+"""
+Either StudentExam or Error
+"""
+union StudentExamResult = StudentExam | Error
+
+"""
+Student's answer to a question
+"""
+type StudentAnswer {
+  id: ID!
+  uuid: UUID!
+  student: User!
+  question: Question!
+  studentExam: StudentExam!
+  selectedAnswer: String
+  isCorrect: Boolean
+  isMarked: Boolean!
+  timeTaken: Int
+  answeredAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+"""
+Either StudentAnswer or Error
+"""
+union StudentAnswerResult = StudentAnswer | Error
+
+"""
+System notification
+"""
+type Notification implements Node {
+  id: ID!
+  uuid: UUID!
+  user: User!
+  title: String!
+  message: String!
+  type: NotificationType!
+  isRead: Boolean!
+  createdAt: DateTime!
+}
+
+"""
+Either Notification or Error
+"""
+union NotificationResult = Notification | Error
+
+"""
+Pagination information
+"""
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+"""
+Generic connection type for pagination
+"""
+interface Connection {
+  edges: [Edge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Generic edge type for connections
+"""
+interface Edge {
+  cursor: String!
+  node: Node!
+}
+
+"""
+Node interface for global object identification
+"""
+interface Node {
+  id: ID!
+}
+
+# Connection types for pagination with Either pattern
+
+type UserEdge implements Edge {
+  cursor: String!
+  node: User!
+}
+
+type UserConnection implements Connection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Either UserConnection or Error
+"""
+union UserConnectionResult = UserConnection | Error
+
+type SubjectEdge implements Edge {
+  cursor: String!
+  node: Subject!
+}
+
+type SubjectConnection implements Connection {
+  edges: [SubjectEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Either SubjectConnection or Error
+"""
+union SubjectConnectionResult = SubjectConnection | Error
+
+type GradeEdge implements Edge {
+  cursor: String!
+  node: Grade!
+}
+
+type GradeConnection implements Connection {
+  edges: [GradeEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Either GradeConnection or Error
+"""
+union GradeConnectionResult = GradeConnection | Error
+
+type ExamEdge implements Edge {
+  cursor: String!
+  node: Exam!
+}
+
+type ExamConnection implements Connection {
+  edges: [ExamEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Either ExamConnection or Error
+"""
+union ExamConnectionResult = ExamConnection | Error
+
+type QuestionEdge implements Edge {
+  cursor: String!
+  node: Question!
+}
+
+type QuestionConnection implements Connection {
+  edges: [QuestionEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Either QuestionConnection or Error
+"""
+union QuestionConnectionResult = QuestionConnection | Error
+
+type StudentExamEdge implements Edge {
+  cursor: String!
+  node: StudentExam!
+}
+
+type StudentExamConnection implements Connection {
+  edges: [StudentExamEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Either StudentExamConnection or Error
+"""
+union StudentExamConnectionResult = StudentExamConnection | Error
+
+type NotificationEdge implements Edge {
+  cursor: String!
+  node: Notification!
+}
+
+type NotificationConnection implements Connection {
+  edges: [NotificationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Either NotificationConnection or Error
+"""
+union NotificationConnectionResult = NotificationConnection | Error
+
+# Input types for mutations
+
+input CreateUserInput {
+  firstName: String!
+  lastName: String!
+  email: String!
+  password: String!
+  role: UserRole!
+  profileImage: String
+  phoneNumber: String
+}
+
+input UpdateUserInput {
+  firstName: String
+  lastName: String
+  email: String
+  password: String
+  role: UserRole
+  status: UserStatus
+  profileImage: String
+  phoneNumber: String
+}
+
+input CreateSubjectInput {
+  code: String!
+  name: String!
+  description: String
+  isActive: Boolean
+}
+
+input UpdateSubjectInput {
+  code: String
+  name: String
+  description: String
+  isActive: Boolean
+}
+
+input CreateGradeInput {
+  name: String!
+  description: String
+  academicYear: String!
+  isActive: Boolean
+}
+
+input UpdateGradeInput {
+  name: String
+  description: String
+  academicYear: String
+  isActive: Boolean
+}
+
+input AssignTeacherInput {
+  teacherId: ID!
+  subjectIds: [ID!]
+  gradeIds: [ID!]
+}
+
+input EnrollStudentInput {
+  studentId: ID!
+  gradeId: ID!
+}
+
+input CreateExamInput {
+  title: String!
+  description: String
+  subjectId: ID!
+  gradeId: ID!
+  duration: Int!
+  passmark: Float
+  shuffleQuestions: Boolean
+  allowReview: Boolean
+  showResults: Boolean
+  startDate: DateTime
+  endDate: DateTime
+  instructions: String
+}
+
+input UpdateExamInput {
+  title: String
+  description: String
+  subjectId: ID
+  gradeId: ID
+  duration: Int
+  passmark: Float
+  shuffleQuestions: Boolean
+  allowReview: Boolean
+  showResults: Boolean
+  startDate: DateTime
+  endDate: DateTime
+  status: ExamStatus
+  instructions: String
+}
+
+input CreateQuestionInput {
+  examId: ID!
+  questionNumber: Int!
+  text: String!
+  questionType: QuestionType!
+  options: Json
+  correctAnswer: String!
+  points: Float
+  difficultyLevel: DifficultyLevel
+  tags: [String!]
+  feedback: String
+  image: String
+}
+
+input UpdateQuestionInput {
+  questionNumber: Int
+  text: String
+  questionType: QuestionType
+  options: Json
+  correctAnswer: String
+  points: Float
+  difficultyLevel: DifficultyLevel
+  tags: [String!]
+  feedback: String
+  image: String
+}
+
+input StartExamInput {
+  examId: ID!
+}
+
+input SubmitAnswerInput {
+  studentExamId: ID!
+  questionId: ID!
+  selectedAnswer: String
+  isMarked: Boolean
+  timeTaken: Int
+}
+
+input SubmitExamInput {
+  studentExamId: ID!
+}
+
+input MarkNotificationReadInput {
+  notificationId: ID!
+}
+
+# Filter inputs for queries
+
+input UserFilterInput {
+  role: UserRole
+  status: UserStatus
+  search: String
+}
+
+input SubjectFilterInput {
+  isActive: Boolean
+  search: String
+}
+
+input GradeFilterInput {
+  academicYear: String
+  isActive: Boolean
+  search: String
+}
+
+input ExamFilterInput {
+  subjectId: ID
+  gradeId: ID
+  status: ExamStatus
+  createdById: ID
+  startDateFrom: DateTime
+  startDateTo: DateTime
+  search: String
+}
+
+input StudentExamFilterInput {
+  studentId: ID
+  examId: ID
+  status: ExamAttemptStatus
+  isPassed: Boolean
+}
+
+input NotificationFilterInput {
+  isRead: Boolean
+  type: NotificationType
+}
+
+# Sort inputs for queries
+
+input UserSortInput {
+  field: UserSortField!
+  direction: SortDirection!
+}
+
+input SubjectSortInput {
+  field: SubjectSortField!
+  direction: SortDirection!
+}
+
+input GradeSortInput {
+  field: GradeSortField!
+  direction: SortDirection!
+}
+
+input ExamSortInput {
+  field: ExamSortField!
+  direction: SortDirection!
+}
+
+input StudentExamSortInput {
+  field: StudentExamSortField!
+  direction: SortDirection!
+}
+
+input NotificationSortInput {
+  field: NotificationSortField!
+  direction: SortDirection!
+}
+
+# Sort field enums
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+enum UserSortField {
+  FIRST_NAME
+  LAST_NAME
+  EMAIL
+  CREATED_AT
+  ROLE
+  STATUS
+}
+
+enum SubjectSortField {
+  CODE
+  NAME
+  CREATED_AT
+}
+
+enum GradeSortField {
+  NAME
+  ACADEMIC_YEAR
+  CREATED_AT
+}
+
+enum ExamSortField {
+  TITLE
+  CREATED_AT
+  START_DATE
+  END_DATE
+  STATUS
+}
+
+enum StudentExamSortField {
+  START_TIME
+  END_TIME
+  SCORE
+  STATUS
+}
+
+enum NotificationSortField {
+  CREATED_AT
+  TYPE
+  IS_READ
+}
+
+# Pagination input
+
+input PaginationInput {
+  first: Int
+  after: String
+  last: Int
+  before: String
+}
+
+# Simple result types
+type BooleanResult {
+  success: Boolean!
+  error: Error
+}
+
+type DashboardStats {
+  stats: Json!
+}
+
+"""
+Either DashboardStats or Error
+"""
+union DashboardStatsResult = DashboardStats | Error
+
+# The main Query type
+type Query {
+  # User queries
+  me: UserResult!
+  user(id: ID!): UserResult
+  users(
+    filter: UserFilterInput
+    sort: UserSortInput
+    pagination: PaginationInput
+  ): UserConnectionResult!
+  
+  # Subject queries
+  subject(id: ID!): SubjectResult
+  subjects(
+    filter: SubjectFilterInput
+    sort: SubjectSortInput
+    pagination: PaginationInput
+  ): SubjectConnectionResult!
+  
+  # Grade queries
+  grade(id: ID!): GradeResult
+  grades(
+    filter: GradeFilterInput
+    sort: GradeSortInput
+    pagination: PaginationInput
+  ): GradeConnectionResult!
+  
+  # Exam queries
+  exam(id: ID!): ExamResult
+  exams(
+    filter: ExamFilterInput
+    sort: ExamSortInput
+    pagination: PaginationInput
+  ): ExamConnectionResult!
+  
+  # Question queries
+  question(id: ID!): QuestionResult
+  examQuestions(
+    examId: ID!
+    pagination: PaginationInput
+  ): QuestionConnectionResult!
+  
+  # StudentExam queries
+  studentExam(id: ID!): StudentExamResult
+  studentExams(
+    filter: StudentExamFilterInput
+    sort: StudentExamSortInput
+    pagination: PaginationInput
+  ): StudentExamConnectionResult!
+  
+  # Notification queries
+  notification(id: ID!): NotificationResult
+  notifications(
+    filter: NotificationFilterInput
+    sort: NotificationSortInput
+    pagination: PaginationInput
+  ): NotificationConnectionResult!
+  
+  # Dashboard analytics
+  teacherDashboardStats: DashboardStatsResult!
+  studentDashboardStats: DashboardStatsResult!
+  adminDashboardStats: DashboardStatsResult!
+}
+
+# The main Mutation type
+type Mutation {
+  # Authentication mutations
+  signup(input: CreateUserInput!): AuthPayload!
+  login(input: LoginInput!): AuthResult!
+  logout: BooleanResult!
+  
+  # User mutations
+  createUser(input: CreateUserInput!): UserResult!
+  updateUser(id: ID!, input: UpdateUserInput!): UserResult!
+  deleteUser(id: ID!): BooleanResult!
+  
+  # Subject mutations
+  createSubject(input: CreateSubjectInput!): SubjectResult!
+  updateSubject(id: ID!, input: UpdateSubjectInput!): SubjectResult!
+  deleteSubject(id: ID!): BooleanResult!
+  
+  # Grade mutations
+  createGrade(input: CreateGradeInput!): GradeResult!
+  updateGrade(id: ID!, input: UpdateGradeInput!): GradeResult!
+  deleteGrade(id: ID!): BooleanResult!
+  
+  # Assignment mutations
+  assignTeacher(input: AssignTeacherInput!): BooleanResult!
+  enrollStudent(input: EnrollStudentInput!): BooleanResult!
+  
+  # Exam mutations
+  createExam(input: CreateExamInput!): ExamResult!
+  updateExam(id: ID!, input: UpdateExamInput!): ExamResult!
+  deleteExam(id: ID!): BooleanResult!
+  publishExam(id: ID!): ExamResult!
+  archiveExam(id: ID!): ExamResult!
+  
+  # Question mutations
+  createQuestion(input: CreateQuestionInput!): QuestionResult!
+  updateQuestion(id: ID!, input: UpdateQuestionInput!): QuestionResult!
+  deleteQuestion(id: ID!): BooleanResult!
+  
+  # Exam taking mutations
+  startExam(input: StartExamInput!): StudentExamResult!
+  submitAnswer(input: SubmitAnswerInput!): StudentAnswerResult!
+  submitExam(input: SubmitExamInput!): StudentExamResult!
+  
+  # Notification mutations
+  markNotificationRead(input: MarkNotificationReadInput!): NotificationResult!
+  markAllNotificationsRead: BooleanResult!
+  
+  # Admin operations
+  importUsers(file: Upload!): BooleanResult!
+  importQuestions(examId: ID!, file: Upload!): BooleanResult!
+}
+
+# The main Subscription type
+type Subscription {
+  examStarted(gradeId: ID): ExamResult!
+  examEnded(gradeId: ID): ExamResult!
+  studentExamSubmitted(examId: ID): StudentExamResult!
+  notificationReceived: NotificationResult!
+}

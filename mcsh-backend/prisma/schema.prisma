@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for teachers, admins, and students
+model User {
+  id                Int                 @id @default(autoincrement())
+  uuid              String              @unique @default(uuid())
+  firstName         String              @db.VarChar(50)
+  lastName          String              @db.VarChar(50)
+  email             String              @unique @db.VarChar(100)
+  password          String              @db.VarChar(255)
+  role              UserRole            @default(STUDENT)
+  status            UserStatus          @default(PENDING)
+  profileImage      String?             @db.VarChar(255)
+  phoneNumber       String?             @db.VarChar(20)
+  resetToken        String?             @db.VarChar(255)
+  resetTokenExpiry  DateTime?
+  lastLogin         DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @default(now()) @updatedAt
+  
+  // Relationships
+  teacherSubjects   TeacherSubject[]
+  teacherGrades     TeacherGrade[]
+  studentGrades     StudentGrade[]
+  createdExams      Exam[]              @relation("ExamCreator")
+  studentExams      StudentExam[]
+  studentAnswers    StudentAnswer[]
+  notifications     Notification[]
+  
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+
+// Subject model with Grade relationship
+model Subject {
+  id              Int               @id @default(autoincrement())
+  uuid            String            @unique @default(uuid())
+  code            String            @unique @db.VarChar(20)
+  name            String            
+  description     String?           @db.Text
+  isActive        Boolean           @default(true)
+  
+  // Foreign key to Grade with default value of 1
+  gradeId         Int               @default(1)
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @default(now()) @updatedAt
+  
+  // Relationships
+  grade           Grade             @relation(fields: [gradeId], references: [id], onDelete: Restrict)
+  teacherSubjects TeacherSubject[]
+  exams           Exam[]
+  
+  @@index([code])
+  @@index([gradeId])
+  @@map("subjects")
+}
+
+// Grade/Class model
+model Grade {
+  id            Int             @id @default(autoincrement())
+  uuid          String          @unique @default(uuid())
+  name          String          @unique @db.VarChar(50)
+  description   String?         @db.Text
+  academicYear  String          @db.VarChar(20)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now()) @updatedAt
+  
+  // Relationships
+  subjects      Subject[]      
+  teacherGrades TeacherGrade[]
+  studentGrades StudentGrade[]
+  exams         Exam[]
+  
+  @@index([academicYear])
+  @@map("grades")
+}
+
+
+// Junction table for teacher-subject assignments
+model TeacherSubject {
+  teacherId   Int
+  subjectId   Int
+  assignedAt  DateTime      @default(now())
+  isActive    Boolean       @default(true)
+  
+  // Relationships
+  teacher     User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject     Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  
+  @@id([teacherId, subjectId])
+  @@map("teacher_subjects")
+}
+
+// Junction table for teacher-grade assignments
+model TeacherGrade {
+  teacherId   Int
+  gradeId     Int
+  assignedAt  DateTime    @default(now())
+  isActive    Boolean     @default(true)
+  
+  // Relationships
+  teacher     User        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  grade       Grade       @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  
+  @@id([teacherId, gradeId])
+  @@map("teacher_grades")
+}
+
+// Junction table for student-grade assignments
+model StudentGrade {
+  studentId   Int
+  gradeId     Int
+  enrolledAt  DateTime    @default(now())
+  isActive    Boolean     @default(true)
+  
+  // Relationships
+  student     User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  grade       Grade       @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  
+  @@id([studentId, gradeId])
+  @@map("student_grades")
+}
+
+// Exam model for CBT exams
+model Exam {
+  id                Int               @id @default(autoincrement())
+  uuid              String            @unique @default(uuid())
+  title             String            @db.VarChar(255)
+  description       String?           @db.Text
+  subjectId         Int
+  gradeId           Int
+  createdById       Int
+  duration          Int               // Duration in minutes
+  passmark          Float?            // Pass mark as a percentage
+  shuffleQuestions  Boolean           @default(false)
+  allowReview       Boolean           @default(true)
+  showResults       Boolean           @default(true)
+  startDate         DateTime?         // Optional scheduled start time
+  endDate           DateTime?         // Optional scheduled end time
+  status            ExamStatus        @default(DRAFT)
+  attemptStatus     ExamAttemptStatus @default(NOT_STARTED)
+  instructions      String?           @db.Text
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now()) @updatedAt
+  
+  // Relationships
+  subject           Subject           @relation(fields: [subjectId], references: [id])
+  grade             Grade             @relation(fields: [gradeId], references: [id])
+  createdBy         User              @relation("ExamCreator", fields: [createdById], references: [id])
+  questions         Question[]
+  studentExams      StudentExam[]
+  
+  @@index([subjectId])
+  @@index([gradeId])
+  @@index([status])
+  @@map("exams")
+}
+
+// Question model for exam questions
+model Question {
+  id             Int               @id @default(autoincrement())
+  uuid           String            @unique @default(uuid())
+  examId         Int
+  questionNumber Int               // Display order in exam
+  text           String            @db.Text
+  questionType   QuestionType      @default(MULTIPLE_CHOICE)
+  options        Json?             // For storing options in various formats
+  correctAnswer  String            @db.VarChar(255)
+  points         Float             @default(1)
+  difficultyLevel DifficultyLevel? 
+  tags           String[]
+  feedback       String?           @db.Text
+  image          String?           @db.VarChar(255)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @default(now()) @updatedAt
+  
+  // Relationships
+  exam           Exam              @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentAnswers StudentAnswer[]
+  
+  @@index([examId])
+  @@map("questions")
+}
+
+// StudentExam model for tracking exam sessions
+model StudentExam {
+  id             Int            @id @default(autoincrement())
+  uuid           String         @unique @default(uuid())
+  studentId      Int
+  examId         Int
+  startTime      DateTime?      // When student started the exam
+  endTime        DateTime?      // When student submitted or time expired
+  timeSpent      Int?           // Time spent in seconds
+  score          Float?         // Student's score
+  isPassed       Boolean?       // Whether student passed the exam
+  status         ExamAttemptStatus @default(NOT_STARTED)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  
+  // Relationships
+  student        User           @relation(fields: [studentId], references: [id])
+  exam           Exam           @relation(fields: [examId], references: [id])
+  studentAnswers StudentAnswer[]
+  
+  @@unique([studentId, examId])
+  @@index([studentId])
+  @@index([examId])
+  @@index([status])
+  @@map("student_exams")
+}
+
+// StudentAnswer model for tracking student responses
+model StudentAnswer {
+  id             Int            @id @default(autoincrement())
+  uuid           String         @unique @default(uuid())
+  studentId      Int
+  examId         Int
+  questionId     Int
+  studentExamId  Int
+  selectedAnswer String?        @db.VarChar(255)
+  isCorrect      Boolean?       // Whether the answer is correct
+  isMarked       Boolean        @default(false) // Marked for review
+  timeTaken      Int?           // Time taken to answer in seconds
+  answeredAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  
+  // Relationships
+  student        User           @relation(fields: [studentId], references: [id])
+  question       Question       @relation(fields: [questionId], references: [id])
+  studentExam    StudentExam    @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
+  
+  @@unique([studentExamId, questionId])
+  @@index([studentId])
+  @@index([questionId])
+  @@map("student_answers")
+}
+
+// Notification model for system notifications
+model Notification {
+  id          Int                @id @default(autoincrement())
+  uuid        String             @unique @default(uuid())
+  userId      Int
+  title       String             @db.VarChar(100)
+  message     String             @db.Text
+  type        NotificationType   @default(INFO)
+  isRead      Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  
+  // Relationships
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// Enums for strongly typed fields
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExamAttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  GRADED
+  EXPIRED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
+  MATCHING
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
