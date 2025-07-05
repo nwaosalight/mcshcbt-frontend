@@ -18,7 +18,7 @@ class ExamDashboard extends StatefulWidget {
 }
 
 class _ExamDashboardState extends State<ExamDashboard> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   String _errorMessage = '';
 
   @override
@@ -41,9 +41,11 @@ class _ExamDashboardState extends State<ExamDashboard> {
       final storageService = await GetIt.I.getAsync<StorageService>();
       final gradeId =  storageService.readString("gradeId");
 
+      print('gradeId: $gradeId');
+
       if (gradeId == null) {
         setState(() {
-          _errorMessage = 'No grade ID found, contact admin';
+          _isLoading = false;
         });
         return;
       }
@@ -51,6 +53,7 @@ class _ExamDashboardState extends State<ExamDashboard> {
       // Load upcoming exams
       final examProvider = Provider.of<ExamProvider>(context, listen: false);
       final result = await examProvider.getSubjectExams(gradeId, 'PUBLISHED');
+ 
 
       setState(() {
         _isLoading = false;
@@ -69,9 +72,9 @@ class _ExamDashboardState extends State<ExamDashboard> {
   @override
   Widget build(BuildContext context) {
     final userName = Provider.of<AuthProvider>(context).username;
+
     final examProvider = Provider.of<ExamProvider>(context);
     final exams = examProvider.examinations;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exam Dashboard'),
@@ -81,7 +84,7 @@ class _ExamDashboardState extends State<ExamDashboard> {
             icon: const Icon(Icons.logout),
             onPressed: () {
               Provider.of<AuthProvider>(context, listen: false).logout();
-              context.goNamed('roleSelection');
+              context.goNamed('login');
             },
             tooltip: 'Logout',
           ),
@@ -233,7 +236,8 @@ class _ExamDashboardState extends State<ExamDashboard> {
                         ),
                       ),
 
-                      ...exams.map(_buildExamCard).toList(),
+                      // ...exams.map(_buildExamCard).toList(),
+                      ...exams.map((e) => _buildExamCard(e)).toList(),
 
                       if (exams.isEmpty)
                         Center(
@@ -261,6 +265,23 @@ class _ExamDashboardState extends State<ExamDashboard> {
                                   color: AppColors.textSecondary,
                                 ),
                                 textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton.icon(
+                                onPressed: _loadExams,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Reload'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -454,21 +475,7 @@ class _ExamDashboardState extends State<ExamDashboard> {
                     ),
                   ],
                 ),
-                if (isCompleted)
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      context.goNamed(
-                        'examResults',
-                        queryParameters: {'examId': exam.id},
-                      );
-                    },
-                    icon: const Icon(Icons.assessment, size: 18),
-                    label: const Text('View Results'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.info,
-                    ),
-                  )
-                else
+                
                   ElevatedButton.icon(
                     onPressed: () {
                       provider.selectCurrentExam(exam);

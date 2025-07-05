@@ -65,11 +65,11 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
     super.dispose();
   }
 
-  void _refreshData() {
+  void _refreshData() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-    userProvider.getUser(role: "TEACHER");
-    userProvider.getGrades();
-    userProvider.getSubjects();
+   await userProvider.getUser(role: "TEACHER");
+    await userProvider.getGrades();
+    await userProvider.getSubjects();
     _filterTeachers();
   }
 
@@ -143,8 +143,10 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
 
     try {
       final gradeService = await GetIt.I.getAsync<GradeService>();
+      
       final success = await gradeService.assignTeacher(
         teacherId: selectedTeacherIdForAssignment!,
+        subjectIds: [selectedSubjectId!],
         gradeIds: [selectedGradeId!],
       );
 
@@ -174,6 +176,7 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
       final gradeService = await GetIt.I.getAsync<GradeService>();
       final success = await gradeService.assignTeacher(
         teacherId: selectedTeacherIdForAssignment!,
+        gradeIds: [selectedGradeId!],
         subjectIds: [selectedSubjectId!],
       );
 

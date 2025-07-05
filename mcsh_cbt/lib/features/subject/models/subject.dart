@@ -31,8 +31,8 @@ class Subject {
       name: json['name'],
       gradeId: json['gradeId'],
       gradeName: json['gradeName'],
-      description: json['description'],
-      isActive: json['isActive'],
+      description: json['description'] ?? '',
+      isActive: json['isActive'] ?? false,
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
     );

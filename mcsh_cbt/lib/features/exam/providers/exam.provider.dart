@@ -39,8 +39,6 @@ class ExamProvider extends ChangeNotifier {
       final result = await examService.getExams(
         filter: {"gradeId": gradeId, "status": status},
       );
-
-      print(result);
       if (result?["edges"] != null) {
         _examinations = Examination.listFromJson(result?['edges'] ?? []);
         notifyListeners();
@@ -69,7 +67,7 @@ class ExamProvider extends ChangeNotifier {
       final result = await studentExamService.getStudentExams(
         filter: {"studentId": userId, "examId": _currentExam?.id},
       );
-      print(result);
+      print('result: $result');
       final edges = (result?['edges'] ?? []) as List;
       final nodes =
           edges
@@ -91,7 +89,7 @@ class ExamProvider extends ChangeNotifier {
 
       final result = await examService.getExams(filter: filter);
 
-      print(result);
+      
       if (result?["edges"] != null) {
         final examinations = Examination.listFromJson(result?['edges'] ?? []);
         notifyListeners();
@@ -137,27 +135,27 @@ class ExamProvider extends ChangeNotifier {
   // }
 
   Future<Result<bool, String>> submitExam(
-  String studentExamId,
-  List<SubmitAnswerInput> selectedAnswers,
-) async {
-  try {
-    final studentExamService = await GetIt.I.getAsync<StudentExamService>();
-    final result = await studentExamService.submitExam(
-      studentExamId: studentExamId,
-      answers: selectedAnswers.map((ans) => ans.toJson()).toList(),
-    );
+    String studentExamId,
+    List<SubmitAnswerInput> selectedAnswers,
+  ) async {
+    try {
+      final studentExamService = await GetIt.I.getAsync<StudentExamService>();
+      final result = await studentExamService.submitExam(
+        studentExamId: studentExamId,
+        answers: selectedAnswers.map((ans) => ans.toJson()).toList(),
+      );
 
-    // The result should contain the submitted StudentExam data
-    if (result != null && result['id'] != null) {
-      return Ok(true);
-    } else {
-      return Err('Submission failed - no data returned');
+      // The result should contain the submitted StudentExam data
+      if (result != null && result['id'] != null) {
+        return Ok(true);
+      } else {
+        return Err('Submission failed - no data returned');
+      }
+    } catch (error) {
+      print('Error submitting exam: $error');
+      return Err("Failed to submit exam: $error");
     }
-  } catch (error) {
-    print('Error submitting exam: $error');
-    return Err("Failed to submit exam: $error");
   }
-}
 
   Future<Result<List<ExamQuestion>, String>> getExamQuestions() async {
     _questions = [];
@@ -213,6 +211,7 @@ class ExamProvider extends ChangeNotifier {
     try {
       final examService = await GetIt.I.getAsync<ExamService>();
 
+      print("title: $title");
       final result = await examService.createExam(
         title: title,
         description: description,

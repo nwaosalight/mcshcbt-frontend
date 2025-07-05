@@ -14,6 +14,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          onPressed: () {
+            context.goNamed('adminLogin');
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
         title: const Text('Admin Dashboard'),
         backgroundColor: AppColors.darkPurple,
         foregroundColor: AppColors.white,

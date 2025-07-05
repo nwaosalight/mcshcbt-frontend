@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fleather/fleather.dart';
@@ -11,7 +12,9 @@ import 'package:provider/provider.dart';
 import '../theme.dart';
 
 class ExamScreen extends StatefulWidget {
-  const ExamScreen({Key? key}) : super(key: key);
+  final int? examDurationMinutes; // Add exam duration parameter
+  
+  const ExamScreen({Key? key, this.examDurationMinutes}) : super(key: key);
 
   @override
   _ExamScreenState createState() => _ExamScreenState();
@@ -25,16 +28,23 @@ class _ExamScreenState extends State<ExamScreen> {
   bool _isSubmitting = false;
   final PageController _pageController = PageController();
 
+  // Timer related variables
+  Timer? _examTimer;
+  late Duration _remainingTime;
+  bool _isTimerActive = false;
+  bool _timeWarningShown = false;
+
   @override
   void initState() {
     super.initState();
-    // Don't call Provider here
+    // Initialize timer duration (default to 60 minutes if not provided)
+    final durationMinutes = widget.examDurationMinutes ?? 60;
+    _remainingTime = Duration(minutes: durationMinutes);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // This is the proper place to access the Provider
     if (_questionsFuture == null) {
       _questionsFuture = getExamQuestions();
       _loadQuestions();
@@ -53,6 +63,7 @@ class _ExamScreenState extends State<ExamScreen> {
         _questions = result.unwrap();
         _answers = {for (var question in _questions) question.id: null};
       });
+      _startTimer(); // Start timer after questions are loaded
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -62,6 +73,83 @@ class _ExamScreenState extends State<ExamScreen> {
           ),
         );
       }
+    }
+  }
+
+  void _startTimer() {
+    if (_isTimerActive) return;
+    
+    _isTimerActive = true;
+    _examTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (_remainingTime.inSeconds <= 0) {
+        _timeUp();
+      } else {
+        setState(() {
+          _remainingTime = Duration(seconds: _remainingTime.inSeconds - 1);
+        });
+        
+        // Show warning when 5 minutes left
+        if (_remainingTime.inMinutes == 5 && !_timeWarningShown) {
+          _showTimeWarning();
+        }
+      }
+    });
+  }
+
+  void _showTimeWarning() {
+    _timeWarningShown = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Time Warning', style: TextStyle(color: Colors.orange)),
+          ],
+        ),
+        content: Text('You have 5 minutes remaining. Please complete your exam soon.'),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _timeUp() {
+    _examTimer?.cancel();
+    _isTimerActive = false;
+    
+    if (!_isSubmitting) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.access_time, color: AppColors.red),
+              SizedBox(width: 8),
+              Text('Time Up!', style: TextStyle(color: AppColors.red)),
+            ],
+          ),
+          content: Text('Your exam time has elapsed. Your answers will be submitted automatically.'),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.red),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _submitExam(isAutoSubmit: true);
+              },
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -81,56 +169,60 @@ class _ExamScreenState extends State<ExamScreen> {
     }
   }
 
-  void _submitExam() async {
+  void _submitExam({bool isAutoSubmit = false}) async {
     final provider = Provider.of<ExamProvider>(context, listen: false);
 
     setState(() => _isSubmitting = true);
+    _examTimer?.cancel(); // Stop the timer
 
     try {
       final studentExams = await provider.getStudentExam();
       if (studentExams.isErr()) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(studentExams.unwrapErr())));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(studentExams.unwrapErr()))
+          );
         }
         return;
       }
 
       final studentExam = studentExams.unwrap()[0];
 
-      final submitAnswers =
-          _answers.entries
-              .map(
-                (entry) => SubmitAnswerInput(
-                  studentExamId: studentExam['id'],
-                  questionId: entry.key,
-                  selectedAnswer: entry.value,
-                ),
-              )
-              .toList();
+      final submitAnswers = _answers.entries
+          .map((entry) => SubmitAnswerInput(
+                studentExamId: studentExam['id'],
+                questionId: entry.key,
+                selectedAnswer: entry.value,
+              ))
+          .toList();
 
-      final result = await provider.submitExam(
-        studentExam["id"],
-        submitAnswers,
-      );
+      final result = await provider.submitExam(studentExam["id"], submitAnswers);
 
       if (result.isOk()) {
         if (mounted) {
-          // Show success message before navigating
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Exam submitted successfully!'),
-              backgroundColor: Colors.green,
+              content: Text(isAutoSubmit 
+                ? 'Exam submitted automatically due to time limit!' 
+                : 'Exam submitted successfully!'),
+              backgroundColor: isAutoSubmit ? Colors.orange : Colors.green,
               duration: Duration(seconds: 2),
             ),
           );
-          // Small delay to show the success message
           await Future.delayed(Duration(milliseconds: 500));
           context.goNamed("login");
         }
       } else {
         if (mounted) {
+          if (result.unwrapErr() == 'Failed to submit exam: Exception: This exam has already been submitted') {
+             ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Logging out... Exam already submitted'),
+              backgroundColor: AppColors.darkPurple,
+            ),
+          );
+            context.goNamed("login");
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Submission failed: ${result.unwrapErr()}'),
@@ -158,33 +250,66 @@ class _ExamScreenState extends State<ExamScreen> {
   void _showSubmitConfirmation() {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text(
-              'Submit Exam',
-              style: TextStyle(color: AppColors.darkPurple),
-            ),
-            content: Text('Are you sure you want to submit your answers?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(color: AppColors.darkGrey),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.darkPurple,
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _submitExam();
-                },
-                child: Text('Submit'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: Text('Submit Exam', style: TextStyle(color: AppColors.darkPurple)),
+        content: Text('Are you sure you want to submit your answers?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel', style: TextStyle(color: AppColors.darkGrey)),
           ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkPurple),
+            onPressed: () {
+              Navigator.of(context).pop();
+              _submitExam();
+            },
+            child: Text('Submit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+  }
+
+  Color _getTimerColor() {
+    if (_remainingTime.inMinutes <= 5) {
+      return AppColors.red;
+    } else if (_remainingTime.inMinutes <= 15) {
+      return Colors.orange;
+    }
+    return Colors.green;
+  }
+
+  Widget _buildTimerWidget() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _getTimerColor().withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _getTimerColor(), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.timer, color: _getTimerColor(), size: 16),
+          SizedBox(width: 4),
+          Text(
+            _formatTime(_remainingTime),
+            style: TextStyle(
+              color: _getTimerColor(),
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -405,25 +530,23 @@ class _ExamScreenState extends State<ExamScreen> {
                     if (loadingProgress == null) return child;
                     return Center(
                       child: CircularProgressIndicator(
-                        value:
-                            loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                : null,
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
                       ),
                     );
                   },
-                  errorBuilder:
-                      (context, error, stackTrace) => Container(
-                        height: 150,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                          child: Icon(Icons.broken_image, color: Colors.grey),
-                        ),
-                      ),
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.broken_image, color: Colors.grey),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -437,10 +560,9 @@ class _ExamScreenState extends State<ExamScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                   side: BorderSide(
-                    color:
-                        currentAnswer == key
-                            ? AppColors.darkPurple
-                            : Colors.grey.shade300,
+                    color: currentAnswer == key
+                        ? AppColors.darkPurple
+                        : Colors.grey.shade300,
                     width: 1.5,
                   ),
                 ),
@@ -457,26 +579,24 @@ class _ExamScreenState extends State<ExamScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color:
-                                  currentAnswer == key
-                                      ? AppColors.darkPurple
-                                      : Colors.grey.shade400,
+                              color: currentAnswer == key
+                                  ? AppColors.darkPurple
+                                  : Colors.grey.shade400,
                               width: 2,
                             ),
                           ),
-                          child:
-                              currentAnswer == key
-                                  ? Center(
-                                    child: Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: AppColors.darkPurple,
-                                      ),
+                          child: currentAnswer == key
+                              ? Center(
+                                  child: Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.darkPurple,
                                     ),
-                                  )
-                                  : null,
+                                  ),
+                                )
+                              : null,
                         ),
                         SizedBox(width: 16),
                         Expanded(
@@ -527,10 +647,9 @@ class _ExamScreenState extends State<ExamScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed:
-                    _currentQuestionIndex > 0 && !_isSubmitting
-                        ? () => _goToQuestion(_currentQuestionIndex - 1)
-                        : null,
+                onPressed: _currentQuestionIndex > 0 && !_isSubmitting
+                    ? () => _goToQuestion(_currentQuestionIndex - 1)
+                    : null,
                 child: Text('Previous', style: TextStyle(color: Colors.white)),
               ),
               ElevatedButton(
@@ -541,29 +660,27 @@ class _ExamScreenState extends State<ExamScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed:
-                    !_isSubmitting
-                        ? (_currentQuestionIndex < _questions.length - 1
-                            ? () => _goToQuestion(_currentQuestionIndex + 1)
-                            : _showSubmitConfirmation)
-                        : null,
-                child:
-                    _isSubmitting &&
-                            _currentQuestionIndex == _questions.length - 1
-                        ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(Colors.white),
-                          ),
-                        )
-                        : Text(
-                          _currentQuestionIndex < _questions.length - 1
-                              ? 'Next'
-                              : 'Submit',
-                          style: TextStyle(color: Colors.white),
+                onPressed: !_isSubmitting
+                    ? (_currentQuestionIndex < _questions.length - 1
+                        ? () => _goToQuestion(_currentQuestionIndex + 1)
+                        : _showSubmitConfirmation)
+                    : null,
+                child: _isSubmitting &&
+                        _currentQuestionIndex == _questions.length - 1
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
                         ),
+                      )
+                    : Text(
+                        _currentQuestionIndex < _questions.length - 1
+                            ? 'Next'
+                            : 'Submit',
+                        style: TextStyle(color: Colors.white),
+                      ),
               ),
             ],
           ),
@@ -582,10 +699,9 @@ class _ExamScreenState extends State<ExamScreen> {
                     decoration: BoxDecoration(
                       color: isAnswered ? Colors.green : Colors.grey.shade200,
                       border: Border.all(
-                        color:
-                            _currentQuestionIndex == index
-                                ? AppColors.darkPurple
-                                : Colors.transparent,
+                        color: _currentQuestionIndex == index
+                            ? AppColors.darkPurple
+                            : Colors.transparent,
                         width: 2,
                       ),
                       borderRadius: BorderRadius.circular(8),
@@ -595,8 +711,9 @@ class _ExamScreenState extends State<ExamScreen> {
                         '${index + 1}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color:
-                              isAnswered ? AppColors.white : AppColors.darkGrey,
+                          color: isAnswered
+                              ? AppColors.white
+                              : AppColors.darkGrey,
                         ),
                       ),
                     ),
@@ -661,6 +778,11 @@ class _ExamScreenState extends State<ExamScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
+          if (_isTimerActive)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Center(child: _buildTimerWidget()),
+            ),
           if (_questions.isNotEmpty)
             Padding(
               padding: const EdgeInsets.all(16),
@@ -742,10 +864,9 @@ class _ExamScreenState extends State<ExamScreen> {
                   Expanded(
                     child: PageView.builder(
                       controller: _pageController,
-                      physics:
-                          _isSubmitting
-                              ? NeverScrollableScrollPhysics()
-                              : NeverScrollableScrollPhysics(),
+                      physics: _isSubmitting
+                          ? NeverScrollableScrollPhysics()
+                          : NeverScrollableScrollPhysics(),
                       itemCount: _questions.length,
                       onPageChanged: (index) {
                         setState(() => _currentQuestionIndex = index);
@@ -769,6 +890,7 @@ class _ExamScreenState extends State<ExamScreen> {
 
   @override
   void dispose() {
+    _examTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }

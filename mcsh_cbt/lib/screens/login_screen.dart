@@ -5,7 +5,6 @@ import 'package:mcsh_cbt/services/storage_service.dart';
 import '../theme.dart';
 import '../services/authservice.dart';
 
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -42,11 +41,20 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text.trim(),
         );
 
-        storageService.saveString("auth_token", result?['token']);
-        storageService.saveString("userId", result?["user"]['id']);
-        storageService.saveString("email", result?["user"]['email']);
-        storageService.saveString("role", result?["user"]['role']);
-        storageService.saveString("gradeId", result?["user"]['studentGrades']?[0]['id']);
+        print(result);
+
+        if (result != null) {
+          storageService.saveString("auth_token", result['token']);
+          storageService.saveString("userId", result["user"]['id']);
+          storageService.saveString("email", result["user"]['email']);
+          storageService.saveString("role", result["user"]['role']);
+          if (result["user"]['studentGrades']?[0]?['id'] != null) {
+            storageService.saveString(
+              "gradeId",
+              result["user"]['studentGrades']?[0]['id'],
+            );
+          }
+        }
 
         if (result != null) {
           // Navigate to exam dashboard on successful login
@@ -80,10 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              AppColors.lightBlue,
-              AppColors.white,
-            ],
+            colors: [AppColors.lightBlue, AppColors.white],
           ),
         ),
         child: SafeArea(
@@ -107,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fit: BoxFit.contain,
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // App Title
                       const Text(
                         'Mountain Crest Exam CBT',
@@ -119,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 40),
-                      
+
                       // Error message
                       if (_errorMessage.isNotEmpty)
                         Padding(
@@ -133,14 +138,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                      
+
                       // Email Field
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
                           labelText: 'Email',
-                          prefixIcon: Icon(Icons.email, color: AppColors.darkPurple),
+                          prefixIcon: Icon(
+                            Icons.email,
+                            color: AppColors.darkPurple,
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -153,14 +161,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Password Field
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: Icon(Icons.lock, color: AppColors.darkPurple),
+                          prefixIcon: Icon(
+                            Icons.lock,
+                            color: AppColors.darkPurple,
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -173,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Forgot Password Link
                       Align(
                         alignment: Alignment.centerRight,
@@ -188,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Continue Button
                       SizedBox(
                         width: double.infinity,
@@ -197,18 +208,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          child: _isLoading
-                              ? const CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                )
-                              : const Text(
-                                  'Continue',
-                                  style: TextStyle(fontSize: 16),
-                                ),
+                          child:
+                              _isLoading
+                                  ? const CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  )
+                                  : const Text(
+                                    'Continue',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Sign Up Prompt
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

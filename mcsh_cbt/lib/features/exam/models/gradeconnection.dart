@@ -74,10 +74,10 @@ class Grade {
       id: json['id'],
       uuid: json['uuid'],
       name: json['name'],
-      description: json['description'],
-      academicYear: json['academicYear'],
-      isActive: json['isActive'],
-      createdAt: json['createdAt'],
+      description: json['description'] ?? '',
+      academicYear: json['academicYear'] ?? '',
+      isActive: json['isActive'] ?? false,
+      createdAt: json['createdAt'] ,
       updatedAt: json['updatedAt'],
     );
   }

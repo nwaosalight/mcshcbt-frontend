@@ -15,6 +15,10 @@ class GraphQLFragments {
       createdAt
       updatedAt
       fullName
+      studentGrades {
+        id
+        name
+      }
     }
   ''';
 
