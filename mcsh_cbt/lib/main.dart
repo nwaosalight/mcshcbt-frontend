@@ -13,7 +13,7 @@ import 'features/auth/providers/admin_provider.dart';
 import 'features/auth/providers/teacher_provider.dart';
 import 'features/question/providers/question_provider.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Set system UI overlay style to match our theme
@@ -32,7 +32,7 @@ void main() {
     DeviceOrientation.portraitDown,
   ]);
 
-  setupLocator();
+  await setupLocator(); // Await dependency setup
   runApp(const MyApp());
 }
 

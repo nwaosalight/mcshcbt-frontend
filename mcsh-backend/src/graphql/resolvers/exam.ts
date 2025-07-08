@@ -272,13 +272,13 @@ export const examResolvers = {
         if (userRole === 'STUDENT') {
           // Students can only see published exams for their grades
           where.status = 'PUBLISHED';
+          // TODO: UNCOMMENT THE LINE BELOW
+          // const studentGrades = await prisma.studentGrade.findMany({
+          //   where: { studentId: context.user.id }
+          // });
           
-          const studentGrades = await prisma.studentGrade.findMany({
-            where: { studentId: context.user.id }
-          });
-          
-          const gradeIds = studentGrades.map(sg => sg.gradeId);
-          where.gradeId = { in: gradeIds };
+          // const gradeIds = studentGrades.map(sg => sg.gradeId);
+          // where.gradeId = { in: gradeIds };
         } 
         else if (userRole === 'TEACHER') {
           // Teachers see exams they created or for subjects/grades they teach
@@ -306,7 +306,7 @@ export const examResolvers = {
         }
         
         // Build orderBy from sort
-        let orderBy: any = { createdAt: 'desc' }; // Default sort
+        let orderBy: any = { createdAt: 'asc' }; // Default sort
         if (args.sort) {
           switch (args.sort.field) {
             case 'TITLE':
@@ -341,7 +341,6 @@ export const examResolvers = {
           take: first,
           skip
         });
-        
         // Create edges for connection pattern
         const edges = exams.map(exam => ({
           cursor: Buffer.from(`exam-${exam.id}`).toString('base64'),
@@ -401,9 +400,11 @@ export const examResolvers = {
           const teacherSubjects = await prisma.teacherSubject.findMany({
             where: { teacherId: context.user.id }
           });
+
+          
           
           const subjectIds = teacherSubjects.map(ts => ts.subjectId);
-          
+           
           if (!subjectIds.includes(parseInt(input.subjectId))) {
             return {
               __typename: 'Error',
@@ -417,6 +418,7 @@ export const examResolvers = {
           });
           
           const gradeIds = teacherGrades.map(tg => tg.gradeId);
+          console.log(context.user.id)
           
           if (!gradeIds.includes(parseInt(input.gradeId))) {
             return {

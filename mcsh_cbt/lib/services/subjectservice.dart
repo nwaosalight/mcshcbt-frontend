@@ -156,6 +156,7 @@ class SubjectService {
   Future<Map<String, dynamic>?> createSubject({
     required String subjectCode,
     required String name,
+    required String gradeId,
     String? description,
   }) async {
     final MutationOptions options = MutationOptions(
@@ -164,6 +165,7 @@ class SubjectService {
         'input': {
           'code': subjectCode,
           'name': name,
+          'gradeId': gradeId, 
           if (description != null) 'description': description,
         },
       },

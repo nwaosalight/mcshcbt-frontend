@@ -64,7 +64,7 @@ class UserNode {
   final String createdAt;
   final String updatedAt;
   final String fullName;
-  final Grade? grade;
+  final GradeUserNode? grade;
 
   UserNode({
     required this.id,
@@ -84,6 +84,7 @@ class UserNode {
   });
 
   factory UserNode.fromJson(Map<String, dynamic> json) {
+    print('json $json');
     return UserNode(
       id: json['id'],
       uuid: json['uuid'],
@@ -100,7 +101,7 @@ class UserNode {
       fullName: json['fullName'],
       grade: (json['studentGrades'] != null && 
          json['studentGrades'].isNotEmpty) 
-    ? Grade.fromJson(json['studentGrades'][0]) 
+    ? GradeUserNode.fromJson(json['studentGrades'][0]) 
     : null
     );
   }
@@ -127,4 +128,19 @@ class UserNode {
   static List<UserNode> listFromJson(List<dynamic> jsonList) {
     return jsonList.map((edge) => UserNode.fromJson(edge['node'])).toList();
   }
+}
+
+class GradeUserNode{
+  final String id;
+  final String name;
+
+  GradeUserNode({
+    required this.id,
+    required this.name,
+  });
+
+  factory GradeUserNode.fromJson(Map<String, dynamic> json){
+    return GradeUserNode(id: json['id'], name: json['name']);
+  }
+
 }

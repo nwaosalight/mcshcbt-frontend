@@ -1,27 +1,17 @@
 import { PrismaClient, UserRole } from '@prisma/client';
-import { Context } from 'src/utils/auth';
+import { Context } from '../../utils/auth';
 
 const prisma = new PrismaClient();
 
 interface AssignTeacherInput {
   teacherId: string;
-  subjectIds: string[];
-  gradeIds: string[];
+  subjectIds?: string[];
+  gradeIds?: string[];
 }
 
 interface EnrollStudentInput {
   studentId: string;
   gradeId: string;
-}
-
-interface BooleanResult {
-  success: boolean;
-  error?: {
-    code: string;
-    message: string;
-    path?: string[];
-    details?: any;
-  };
 }
 
 export const subjectResolvers = {
@@ -256,19 +246,23 @@ export const subjectResolvers = {
             }
           }
         });
-
+      
         // Create edges and page info
-        const edges = subjects.map(subject => ({
-          cursor: Buffer.from(subject.id.toString()).toString('base64'),
-          node: {
-            ...subject,
-            id: subject.id.toString(),
-            uuid: subject.uuid,
-            gradeId: subject.gradeId,
-            gradeName: subject.grade.name,
-            __typename: 'Subject'
-          }
-        }));
+        const edges = subjects.map(subject => {
+          const {code, ...rest} = subject
+          return ({
+            cursor: Buffer.from(subject.id.toString()).toString('base64'),
+            node: {
+              ...rest,
+              subjectCode: code,
+              id: subject.id.toString(),
+              uuid: subject.uuid,
+              gradeId: subject.gradeId,
+              gradeName: subject.grade.name,
+              __typename: 'Subject'
+            }
+          })
+        });
 
         // Determine if there's a next page or previous page
         let hasNextPage = false;
@@ -459,9 +453,11 @@ export const subjectResolvers = {
           }
         });
 
+        const {code, ...rest} = subject
         return {
           __typename: 'Subject',
-          ...subject,
+          ...rest,
+          subjectCode: code,
           gradeId: subject.gradeId,
           gradeName: subject.grade.name
         };
@@ -550,10 +546,11 @@ export const subjectResolvers = {
             }
           }
         });
-
+        const {code, ...rest} = subject
         return {
           __typename: 'Subject',
-          ...subject,
+          ...rest,
+          subjectCode: code,
           gradeId: subject.gradeId,
           gradeName: subject.grade.name
         };
@@ -596,9 +593,11 @@ export const subjectResolvers = {
           where: { id: parseInt(id) }
         });
 
+        const {code, ...rest} = existingSubject
         return { 
           __typename: 'Subject',
-          ...existingSubject,
+          ...rest,
+          subjectCode: code,  
           gradeId: existingSubject.gradeId,
           gradeName: existingSubject.grade.name
         };
@@ -613,8 +612,12 @@ export const subjectResolvers = {
       }
     }, 
 
-    assignTeacher: async (_: any, { input }: { input: AssignTeacherInput }, context: Context) => {
+    assignTeacher: async (_: any, { input }: { input: AssignTeacherInput }) => {
       try {
+        // Ensure subjectIds and gradeIds are always arrays (empty if not provided)
+        const subjectIds = input.subjectIds || [];
+        const gradeIds = input.gradeIds || [];
+
         // Validate that the user exists and is a teacher
         const teacher = await prisma.user.findUnique({
           where: { id: parseInt(input.teacherId) },
@@ -644,15 +647,15 @@ export const subjectResolvers = {
           };
         }
 
-        // Validate that all subjects exist
-        if (input.subjectIds.length > 0) {
+        // Validate that all subjects exist (only if subjectIds were provided)
+        if (subjectIds.length > 0) {
           const subjects = await prisma.subject.findMany({
-            where: { id: { in: input.subjectIds.map(id => parseInt(id)) } },
+            where: { id: { in: subjectIds.map(id => parseInt(id)) } },
           });
 
-          if (subjects.length !== input.subjectIds.length) {
+          if (subjects.length !== subjectIds.length) {
             const foundIds = subjects.map(s => s.id);
-            const missingIds = input.subjectIds.filter(id => !foundIds.includes(parseInt(id)));
+            const missingIds = subjectIds.filter(id => !foundIds.includes(parseInt(id)));
             return {
               __typename: "BooleanResult",
               success: false,
@@ -665,15 +668,15 @@ export const subjectResolvers = {
           }
         }
 
-        // Validate that all grades exist
-        if (input.gradeIds.length > 0) {
+        // Validate that all grades exist (only if gradeIds were provided)
+        if (gradeIds.length > 0) {
           const grades = await prisma.grade.findMany({
-            where: { id: { in: input.gradeIds.map(str => parseInt(str)) } },
+            where: { id: { in: gradeIds.map(str => parseInt(str)) } },
           });
 
-          if (grades.length !== input.gradeIds.length) {
+          if (grades.length !== gradeIds.length) {
             const foundIds = grades.map(g => g.id);
-            const missingIds = input.gradeIds.filter(id => !foundIds.includes(parseInt(id)));
+            const missingIds = gradeIds.filter(id => !foundIds.includes(parseInt(id)));
             return {
               __typename: "BooleanResult",
               success: false,
@@ -696,10 +699,10 @@ export const subjectResolvers = {
             where: { teacherId: parseInt(input.teacherId) },
           });
 
-          // Create new subject assignments
-          if (input.subjectIds.length > 0) {
+          // Create new subject assignments (only if subjectIds were provided)
+          if (subjectIds.length > 0) {
             await tx.teacherSubject.createMany({
-              data: input.subjectIds.map(subjectId => ({
+              data: subjectIds.map(subjectId => ({
                 teacherId: parseInt(input.teacherId),
                 subjectId: parseInt(subjectId),
                 assignedAt: new Date(),
@@ -708,10 +711,10 @@ export const subjectResolvers = {
             });
           }
 
-          // Create new grade assignments
-          if (input.gradeIds.length > 0) {
+          // Create new grade assignments (only if gradeIds were provided)
+          if (gradeIds.length > 0) {
             await tx.teacherGrade.createMany({
-              data: input.gradeIds.map(gradeId => ({
+              data: gradeIds.map(gradeId => ({
                 teacherId: parseInt(input.teacherId),
                 gradeId: parseInt(gradeId),
                 assignedAt: new Date(),
@@ -728,11 +731,12 @@ export const subjectResolvers = {
       } catch (error) {
         console.error('Error assigning teacher:', error);
         return {
+          __typename: "Error",
           success: false,
           error: {
             code: 'INTERNAL_ERROR',
             message: 'An error occurred while assigning the teacher',
-            details: error,
+            details: error instanceof Error ? error.message : String(error),
           },
         };
       }

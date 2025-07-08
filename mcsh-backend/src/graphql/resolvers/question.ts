@@ -171,7 +171,6 @@ export const questionResolvers = {
       context: Context
     ) => {
       try {
-        // Authentication check
         if (!context.user) {
           return {
             __typename: 'Error',
@@ -198,6 +197,7 @@ export const questionResolvers = {
         
         // Admins have full access
         if (userRole !== 'ADMIN') {
+          console.log(userRole)
           // Check if this user has access to the exam
           if (userRole === 'TEACHER') {
             // Teachers can access if they created the exam or teach the subject
@@ -230,7 +230,7 @@ export const questionResolvers = {
                 message: 'You do not have access to questions for this exam'
               };
             }
-            
+        
             // Check if student is in the grade for this exam
             const studentGrade = await prisma.studentGrade.findFirst({
               where: {
@@ -257,11 +257,18 @@ export const questionResolvers = {
             });
             
             if (!studentExam) {
-              return {
-                __typename: 'Error',
-                code: 'FORBIDDEN',
-                message: 'You must start the exam to view questions'
-              };
+              await prisma.studentExam.create({
+                data: {
+                  studentId: context.user.id, 
+                  examId: parseInt(examId), 
+                  status: "IN_PROGRESS"
+                }
+              })              
+              // return {
+              //   __typename: 'Error',
+              //   code: 'FORBIDDEN',
+              //   message: 'You must start the exam to view questions'
+              // };
             }
           }
         }

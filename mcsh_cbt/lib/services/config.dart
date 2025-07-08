@@ -32,7 +32,7 @@ class GraphQLConfig {
     final token = storage.readString('auth_token');
     
     final HttpLink httpLink = HttpLink(
-      'https://mcshcbt-api-7.onrender.com/graphql',
+      'https://mcshcbt-api.onrender.com/graphql',
     );
     
     final AuthLink authLink = AuthLink(

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mcsh_cbt/theme.dart';
-import 'package:provider/provider.dart';
 import 'package:get_it/get_it.dart';
-import 'package:mcsh_cbt/core/models/result.dart';
 import 'package:mcsh_cbt/features/exam/models/userconnection.dart';
 import 'package:mcsh_cbt/features/exam/models/gradeconnection.dart';
 import 'package:mcsh_cbt/services/gradeservice.dart';
@@ -117,7 +115,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen>
       
       if (success) {
         _showSuccess('Student enrolled successfully!');
-        await _loadStudents(); // Refresh the list
+        await _loadStudents();
       } else {
         _showError('Failed to enroll student');
       }
@@ -321,6 +319,7 @@ class _StudentManagementScreenState extends State<StudentManagementScreen>
   }
 
   Widget _buildStudentCard(UserNode student, {bool isPending = false}) {
+    // print('student: ${student.toJson()}');
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
@@ -337,7 +336,8 @@ class _StudentManagementScreenState extends State<StudentManagementScreen>
           children: [
             Text(student.email),
             if (student.phoneNumber != null) Text('Phone: ${student.phoneNumber}'),
-            if (student.grade != null) Text('Grade: ${student.grade!.name}'),
+            if (student.grade != null) Text('Grade: ${student.grade!.name}') ,
+            // if (student.grade == null) Text('Grade: No Grade assigned yet') ,
           ],
         ),
         trailing: isPending
@@ -436,59 +436,61 @@ class _StudentManagementScreenState extends State<StudentManagementScreen>
   }
 
   Widget _buildStatsTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Student Statistics',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatCard('Total Students', _students.length.toString()),
-                      _buildStatCard('Pending Approval', _pendingStudents.length.toString()),
-                      _buildStatCard('Total Grades', _grades.length.toString()),
-                    ],
-                  ),
-                ],
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Student Statistics',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatCard('Total Students', _students.length.toString()),
+                        _buildStatCard('Pending Approval', _pendingStudents.length.toString()),
+                        _buildStatCard('Total Grades', _grades.length.toString()),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Students by Grade',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 16),
-                  ..._grades.map((grade) {
-                    final studentsInGrade = _students.where((student) => 
-                        student.grade?.id == grade.id).length;
-                    return ListTile(
-                      title: Text(grade.name),
-                      trailing: Text('$studentsInGrade students'),
-                    );
-                  }).toList(),
-                ],
+            const SizedBox(height: 20),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Students by Grade',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 16),
+                    ..._grades.map((grade) {
+                      final studentsInGrade = _students.where((student) => 
+                          student.grade?.id == grade.id).length;
+                      return ListTile(
+                        title: Text(grade.name),
+                        trailing: Text('$studentsInGrade students'),
+                      );
+                    }).toList(),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

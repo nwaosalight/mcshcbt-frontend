@@ -164,7 +164,7 @@ Academic subject in the school
 type Subject implements Node {
   id: ID!
   uuid: UUID!
-  code: String!
+  subjectCode: String!
   name: String!
   description: String
   isActive: Boolean!
@@ -326,10 +326,10 @@ type StudentExam implements Node {
   answers: [StudentAnswer!]
   
   # Computed fields
-  progress: Float!
+  progress: Float
   remainingTime: Int
-  answeredCount: Int!
-  markedCount: Int!
+  answeredCount: Int
+  markedCount: Int
 }
 
 """
@@ -567,7 +567,6 @@ input UpdateSubjectInput {
 input CreateGradeInput {
   name: String!
   description: String
-  gradeId: String!
   academicYear: String!
   isActive: Boolean
 }
@@ -582,8 +581,8 @@ input UpdateGradeInput {
 
 input AssignTeacherInput {
   teacherId: ID!
-  subjectIds: [ID!]
-  gradeIds: [ID!]
+  subjectIds: [ID!] 
+  gradeIds: [ID!]   
 }
 
 input EnrollStudentInput {

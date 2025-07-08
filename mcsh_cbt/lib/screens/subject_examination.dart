@@ -441,6 +441,7 @@ class _SubjectExaminationsScreenState extends State<SubjectExaminationsScreen> {
               _showFilterBottomSheet();
             },
           ),
+          IconButton(onPressed: _fetchExaminations, icon: Icon(Icons.refresh_outlined))
       ],
     );
   }

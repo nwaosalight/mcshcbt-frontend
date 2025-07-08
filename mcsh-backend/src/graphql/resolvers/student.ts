@@ -17,6 +17,144 @@ interface SubmitExamInput {
 }
 
 export const studentResolvers = {
+  Query: {
+    studentExam: async (_: any, { id }: { id: string }, context: Context) => {
+      try {
+        
+        if (!context.user) {
+          return {
+            __typename: 'Error',
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in to view a student exam',
+          };
+        }
+        const studentExam = await prisma.studentExam.findUnique({
+          where: { id: parseInt(id) },
+          include: {
+            exam: true,
+            student: true,
+            studentAnswers: true,
+          },
+        });
+        if (!studentExam) {
+          return {
+            __typename: 'Error',
+            code: 'NOT_FOUND',
+            message: 'Student exam not found',
+          };
+        }
+        // Only allow the student or an admin/teacher to view
+        if (
+          context.user.role === 'STUDENT' &&
+          studentExam.studentId !== context.user.id
+        ) {
+          return {
+            __typename: 'Error',
+            code: 'FORBIDDEN',
+            message: 'You are not authorized to view this student exam',
+          };
+        }
+        // Return as StudentExam type
+        return {
+          __typename: 'StudentExam',
+          ...studentExam,
+          id: studentExam.id.toString(),
+          uuid: studentExam.uuid,
+          student: studentExam.student,
+          exam: studentExam.exam,
+          answers: studentExam.studentAnswers, // Map to 'answers' for GraphQL type
+        };
+      } catch (error) {
+        console.error('Error in studentExam query:', error);
+        return {
+          __typename: 'Error',
+          code: 'INTERNAL_ERROR',
+          message: 'An internal error occurred while fetching the student exam',
+        };
+      }
+    },
+    studentExams: async (_: any, { filter, sort, pagination }: any, context: Context) => {
+      try {
+        console.log(context.user)
+        if (!context.user) {
+          return {
+            __typename: 'Error',
+            code: 'UNAUTHORIZED',
+            message: 'You must be logged in to view student exams',
+          };
+        }
+        // Build Prisma where clause from filter
+        const where: any = {};
+        if (filter) {
+          if (filter.studentId) where.studentId = parseInt(filter.studentId);
+          if (filter.examId) where.examId = parseInt(filter.examId);
+          if (filter.status) where.status = filter.status;
+          if (filter.isPassed !== undefined) where.isPassed = filter.isPassed;
+        }
+        // Students can only see their own exams
+        if (context.user.role === 'STUDENT') {
+          where.studentId = context.user.id;
+        }
+        // Sorting
+        let orderBy: any = undefined;
+        if (sort) {
+          orderBy = { [sort.field.replace(/([A-Z])/g, '_$1').toLowerCase()]: sort.direction.toLowerCase() };
+        }
+        // Pagination
+        const take = pagination?.first || 10;
+        const skip = pagination?.after ? 1 : 0; // Simple cursor-based pagination
+        // Fetch data
+        const [totalCount, studentExams] = await Promise.all([
+          prisma.studentExam.count({ where }),
+          prisma.studentExam.findMany({
+            where,
+            orderBy,
+            take,
+            skip,
+            include: {
+              exam: true,
+              student: true,
+              studentAnswers: true,
+            },
+          }),
+        ]);
+        // Build edges
+        const edges = studentExams.map((se) => ({
+          cursor: Buffer.from(se.id.toString()).toString('base64'),
+          node: {
+            __typename: 'StudentExam',
+            ...se,
+            id: se.id.toString(),
+            uuid: se.uuid,
+            student: se.student,
+            exam: se.exam,
+            answers: se.studentAnswers, // Map to 'answers' for GraphQL type
+          },
+        }));
+        // PageInfo (simple, not full cursor implementation)
+        const pageInfo = {
+          hasNextPage: studentExams.length === take,
+          hasPreviousPage: !!pagination?.before,
+          startCursor: edges[0]?.cursor || null,
+          endCursor: edges[edges.length - 1]?.cursor || null,
+        };
+        return {
+          __typename: 'StudentExamConnection',
+          edges,
+          pageInfo,
+          totalCount,
+        };
+      } catch (error) {
+        console.error('Error in studentExams query:', error);
+        return {
+          __typename: 'Error',
+          code: 'INTERNAL_ERROR',
+          message: 'An internal error occurred while fetching student exams',
+        };
+      }
+    },
+  },
+  
   Mutation: {
     submitAnswer: async (_: any, { input }: { input: SubmitAnswerInput }, context: Context) => {
       try {
@@ -249,7 +387,6 @@ export const studentResolvers = {
         }
 
         // Process bulk answers if provided
-        let studentAnswers: any[] = [];
         if (answers && answers.length > 0) {
           // Validate all questions belong to the exam
           const invalidQuestion = answers.find(answer => 
@@ -265,7 +402,7 @@ export const studentResolvers = {
           }
 
           // Bulk create/update student answers
-          studentAnswers = await Promise.all(answers.map(async (answer) => {
+          await Promise.all(answers.map(async (answer) => {
             // Find the corresponding question
             const question = studentExam.exam.questions.find(
               q => q.id === parseInt(answer.questionId)

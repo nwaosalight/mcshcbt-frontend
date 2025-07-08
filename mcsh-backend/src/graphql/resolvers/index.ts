@@ -139,6 +139,7 @@ export const resolvers = {
     ...questionResolvers.Query,
     ...gradeResolvers.Query,
     ...subjectResolvers.Query,
+    ...studentResolvers.Query,
     // Add other Query resolvers
   },
   

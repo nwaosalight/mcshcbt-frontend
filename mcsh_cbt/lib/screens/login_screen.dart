@@ -41,18 +41,18 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text.trim(),
         );
 
-        print(result);
-
         if (result != null) {
           storageService.saveString("auth_token", result['token']);
           storageService.saveString("userId", result["user"]['id']);
           storageService.saveString("email", result["user"]['email']);
           storageService.saveString("role", result["user"]['role']);
-          if (result["user"]['studentGrades']?[0]?['id'] != null) {
+          if (result["user"]['studentGrades'].isNotEmpty) {
             storageService.saveString(
               "gradeId",
               result["user"]['studentGrades']?[0]['id'],
             );
+          }else {
+            storageService.saveString("gradeId", '');
           }
         }
 

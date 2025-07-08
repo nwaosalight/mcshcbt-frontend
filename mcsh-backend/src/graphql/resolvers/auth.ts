@@ -159,7 +159,7 @@ export const authResolvers = {
       }
     },
     
-    logout: async (_: any, __: any, context: Context) => {
+    logout: async (_: any, __: any) => {
       try {
         // Since JWT is stateless, there's nothing to invalidate on the server
         // Client-side should remove the token

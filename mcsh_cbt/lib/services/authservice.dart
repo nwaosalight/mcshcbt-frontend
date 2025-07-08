@@ -86,7 +86,11 @@ class AuthService {
       },
     );
 
+
+
     final QueryResult result = await _client.mutate(options);
+
+
 
     if (result.hasException) {
       throw Exception(result.exception.toString());

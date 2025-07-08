@@ -284,6 +284,15 @@ class _TeacherSubjectScreenState extends State<TeacherSubjectScreen> {
       appBar: AppBar(
         title: const Text('Teacher Dashboard'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              context.goNamed("roleSelection");
+            },
+          ),
+
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addSubject,

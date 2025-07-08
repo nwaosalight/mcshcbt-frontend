@@ -43,7 +43,8 @@ class _ExamDashboardState extends State<ExamDashboard> {
 
       print('gradeId: $gradeId');
 
-      if (gradeId == null) {
+      if (gradeId == null || gradeId.isEmpty) {
+
         setState(() {
           _isLoading = false;
         });

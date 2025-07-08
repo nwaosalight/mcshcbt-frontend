@@ -40,7 +40,6 @@ class AdminProvider extends ChangeNotifier {
       final result = await authService.login(
         password: password, email: username,
       );
-
       _isLoading = false;
 
       if (result?['token'] != null) {

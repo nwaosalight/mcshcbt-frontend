@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mcsh_cbt/features/exam/providers/user.provider.dart';
 import 'package:provider/provider.dart';
 import 'package:get_it/get_it.dart';
@@ -42,6 +43,7 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
   String? selectedGradeId;
   String? selectedSubjectId;
   String? selectedTeacherIdForAssignment;
+  String? selectedGradeIdForSubject; // New variable for subject creation
   bool _isProcessing = false;
   List<UserNode> _filteredTeachers = [];
 
@@ -67,7 +69,7 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
 
   void _refreshData() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
-   await userProvider.getUser(role: "TEACHER");
+    await userProvider.getUser(role: "TEACHER");
     await userProvider.getGrades();
     await userProvider.getSubjects();
     _filterTeachers();
@@ -228,13 +230,20 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
     _gradeAcademicYearController.clear();
     _gradeFormKey.currentState?.reset();
 
-    setState(() {});
+    setState(() {
+      selectedGradeIdForSubject = null;
+    });
   }
 
   // Subject Creation Methods
   Future<void> _createSubject() async {
     if (!_subjectFormKey.currentState!.validate()) return;
     
+    if (selectedGradeIdForSubject == null) {
+      _showError('Please select a grade for the subject');
+      return;
+    }
+
     setState(() => _isProcessing = true);
 
     try {
@@ -242,7 +251,8 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
       final result = await subjectService.createSubject(
         name: _subjectNameController.text.trim(),
         description: _subjectDescriptionController.text.trim(),
-        subjectCode: _subjectCodeController.text.trim()
+        subjectCode: _subjectCodeController.text.trim(),
+        gradeId: selectedGradeIdForSubject!,
       );
 
       if (result != null) {
@@ -261,7 +271,9 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
     _subjectNameController.clear();
     _subjectDescriptionController.clear();
     _subjectCodeController.clear();
+    selectedGradeIdForSubject = null;
     _subjectFormKey.currentState?.reset();
+    setState(() {});
   }
 
   // UI Building Methods
@@ -649,6 +661,7 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
   }
 
   Widget _buildSubjectCreationTab() {
+    final userProvider = Provider.of<UserProvider>(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Form(
@@ -710,6 +723,31 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Select Grade *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.grade),
+                      ),
+                      value: selectedGradeIdForSubject,
+                      items: userProvider.grades?.edges.map((edge) {
+                        return DropdownMenuItem<String>(
+                          value: edge.node.id,
+                          child: Text(edge.node.name),
+                        );
+                      }).toList(),
+                      onChanged: _isProcessing ? null : (value) {
+                        setState(() => selectedGradeIdForSubject = value);
+                      },
+                      validator: (value) {
+                        if (value == null) {
+                          return 'Please select a grade';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 24),
 
@@ -843,7 +881,7 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
                         child: Icon(Icons.subject, color: AppColors.darkPurple),
                       ),
                       title: Text(subject.name),
-                      subtitle: Text(subject.subjectCode ),
+                      subtitle: Text(subject.subjectCode),
                       trailing: subject.isActive
                           ? const Icon(Icons.check_circle, color: Colors.green)
                           : const Icon(Icons.pause_circle, color: Colors.orange),
@@ -1020,6 +1058,14 @@ class _TeacherManagementScreenState extends State<TeacherManagementScreen>
             color: AppColors.white,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              context.goNamed("roleSelection");
+            },
+          ),
+        ],
         backgroundColor: AppColors.darkPurple,
         bottom: TabBar(
           controller: _tabController,

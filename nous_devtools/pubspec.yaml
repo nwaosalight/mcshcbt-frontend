@@ -49,9 +49,22 @@ dev_dependencies:
 
 
 msix_config:
-  display_name: NOUS CODE IDE
-  publisher_display_name: Morka17
-  identity_name: com.novel.nousdevtools
+  display_name: Nous DevTools
+  publisher_display_name: Nous Development
+  identity_name: com.nous.devtools
+  publisher: CN=Josh
+  msix_version: 1.0.0.0
+  certificate_path: nous_devtools_cert.pfx
+  certificate_password: grade08osprey
+  logo_path: assets/icons/app_icon.png
+  capabilities: 'internetClient'
+  languages: en-us
+  architecture: x64
+  sign_tool_options:
+    - /fd
+    - SHA256
+    - /t
+    - http://timestamp.globalsign.com/scripts/timestamp.dll
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

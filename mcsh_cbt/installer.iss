@@ -1,12 +1,12 @@
 ; Inno Setup Script for MCSH CBT Application
 ; Generated for Flutter Windows Application
 
-#define MyAppName "MCSH CBT"
+#define MyAppName "MCSH STUDENT CBT"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Your Company Name"
-#define MyAppURL "https://yourwebsite.com"
+#define MyAppPublisher "NOUS"
+#define MyAppURL "https://www.mcsh.sch"
 #define MyAppExeName "mcsh_cbt.exe"
-#define MyAppId "{{12345678-1234-1234-1234-123456789012}}"
+#define MyAppId "{{12345678-1234-1234-1234-123456789012-12305}}"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -24,7 +24,7 @@ LicenseFile=LICENSE.txt
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
 OutputDir=installer_output
-OutputBaseFilename=MCSH_CBT_Setup
+OutputBaseFilename=MCSH_STUDENT_CBT_Setup
 SetupIconFile=assets\icon\app_icon.ico
 Compression=lzma
 SolidCompression=yes

@@ -1,6 +1,6 @@
 MCSH CBT SOFTWARE LICENSE AGREEMENT
 
-Copyright (c) 2025 [MOUNTAIN CREST HIGH SCHOOL]
+Copyright (c) 2025 MOUNTAIN CREST HIGH SCHOOL, OWERRI, IMO STATE
 All rights reserved.
 
 IMPORTANT - READ CAREFULLY: This License Agreement ("Agreement") is a legal agreement between you (either an individual or a single entity) and [MOUNTAIN CREST HIGH SCHOOL] for the MCSH CBT software product, which includes computer software and associated media and printed materials, and may include online or electronic documentation ("Software").
@@ -26,7 +26,7 @@ You may NOT:
 This Software is designed for educational purposes and computer-based testing. Any use of the Software must comply with applicable educational standards and regulations.
 
 4. OWNERSHIP
-The Software is licensed, not sold. [MOUNTAIN CREST HIGH SCHOOL] retains all right, title, and interest in and to the Software, including all intellectual property rights.
+The Software is licensed, not sold. MOUNTAIN CREST HIGH SCHOOL retains all right, title, and interest in and to the Software, including all intellectual property rights.
 
 5. PRIVACY AND DATA
    a) The Software may collect and store user data for assessment purposes
@@ -37,13 +37,13 @@ The Software is licensed, not sold. [MOUNTAIN CREST HIGH SCHOOL] retains all rig
 THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. [MOUNTAIN CREST HIGH SCHOOL] DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
 
 7. LIMITATION OF LIABILITY
-IN NO EVENT SHALL [MOUNTAIN CREST HIGH SCHOOL] BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATING TO THE USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+IN NO EVENT SHALL MOUNTAIN CREST HIGH SCHOOL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATING TO THE USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 8. TERMINATION
 This license is effective until terminated. Your rights under this license will terminate automatically without notice if you fail to comply with any term of this Agreement. Upon termination, you must destroy all copies of the Software.
 
 9. UPDATES AND SUPPORT
-   a) [MOUNTAIN CREST HIGH SCHOOL] may provide updates to the Software at its discretion
+   a) MOUNTAIN CREST HIGH SCHOOL may provide updates to the Software at its discretion
    b) Support services, if any, are provided separately and subject to separate terms
    c) Updates may modify or replace existing features
 
@@ -77,9 +77,8 @@ This software is built using Flutter framework:
 - Flutter is licensed under the BSD 3-Clause License
 - Copyright (c) 2017, Google Inc.
 
-Additional third-party components may be subject to their respective licenses. Please refer to the documentation or the software's about section for complete attribution.
 
----
 
-Last Updated: [Current Date]
+Last Updated: JULY 2025
+
 Version: 1.0.0

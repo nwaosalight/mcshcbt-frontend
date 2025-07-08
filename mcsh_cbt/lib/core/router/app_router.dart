@@ -28,7 +28,7 @@ class AppRouter {
 
   static final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/login',
     routes: [
       // Role Selection - Initial Route
       GoRoute(
